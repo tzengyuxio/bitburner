@@ -147,7 +147,7 @@ export async function main(ns) {
 	}
 	rootedVisited.sort(compare);
 	rootedVisited.reverse();
-	for (let i = 0; i < 10; ++i) {
+	for (let i = 0; i < rootedVisited.length; ++i) {
 		let host = rootedVisited[i];
 		let maxMoney = ns.getServerMaxMoney(host);
 		let server = ns.getServer(host);
@@ -180,4 +180,9 @@ export async function main(ns) {
 	} else {
 		ns.tprintf('pserv-0 not exist.');
 	}
+	let cost = ns.getPurchasedServerCost(8) * ns.getPurchasedServerLimit();
+	ns.tprint('basic server cost:', cost);
+
+	ns.tprint(ns.fileExists('BruteSSH.exe'));
+	ns.tprint(ns.fileExists('../BruteSSH.exe'));
 }
