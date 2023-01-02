@@ -53,7 +53,7 @@ export async function main(ns) {
     let allHosts = nodes.concat(pservs);
 
     let calcNeedThreadsForWeaken = function (host) {
-        return Math.floor(
+        return Math.ceil(
             (ns.getServerSecurityLevel(host) -
                 ns.getServerMinSecurityLevel(host)) /
                 0.05
@@ -61,15 +61,16 @@ export async function main(ns) {
     };
 
     let freeRam = function (host) {
-        if (host == "home") {
+        if (host != "home") {
             return ns.getServerMaxRam(host) - ns.getServerUsedRam(host);
         }
-        return Math.max(
-            ns.getServerMaxRam(host) -
-                ns.getServerUsedRam(host) -
-                memHomeReserved,
-            0
-        );
+        return 0;
+        // return Math.max(
+        //     ns.getServerMaxRam(host) -
+        //         ns.getServerUsedRam(host) -
+        //         memHomeReserved,
+        //     0
+        // );
     };
 
     let findCopyAndLaunch = function (allHosts, needThreads, script, target) {
@@ -89,7 +90,8 @@ export async function main(ns) {
             ns.scp(script, host);
 
             // launch the weaken script(s)
-            let pid = ns.exec(script, host, numThreads, target);
+            let tag = ns.sprintf("%s_%s_%d", host, target, i);
+            let pid = ns.exec(script, host, numThreads, target, tag);
             if (pid == 0) {
                 ns.tprintf(
                     "    [ERROR] exec '%s' at host[%s] in %d threads to weaken %s\n",

@@ -51,7 +51,7 @@ export async function main(ns) {
                     ns.tprintf("    host[%s]\n", host);
                 } else {
                     ns.tprintf(
-                        "    host[%20s] money: %12d/%12d (%6.2f%%), security: %02.3f(%02.3f)\n",
+                        "    host[%20s] money: %12d/%12d (%6.2f%%), security: %7.3f(-%6.3f -> %2d)\n",
                         host,
                         ns.getServerMoneyAvailable(host),
                         ns.getServerMaxMoney(host),
@@ -59,6 +59,8 @@ export async function main(ns) {
                             ns.getServerMaxMoney(host)) *
                             100,
                         ns.getServerSecurityLevel(host),
+                        ns.getServerSecurityLevel(host) -
+                            ns.getServerMinSecurityLevel(host),
                         ns.getServerMinSecurityLevel(host)
                     );
                 }

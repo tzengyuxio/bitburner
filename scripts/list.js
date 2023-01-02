@@ -147,7 +147,7 @@ export async function main(ns) {
 	}
 	rootedVisited.sort(compare);
 	rootedVisited.reverse();
-	for (let i = 0; i < rootedVisited.length; ++i) {
+	for (let i = 0; i < rootedVisited.length && i < 25; ++i) {
 		let host = rootedVisited[i];
 		let maxMoney = ns.getServerMaxMoney(host);
 		let server = ns.getServer(host);
@@ -159,7 +159,7 @@ export async function main(ns) {
 		let timeToWeaken = 999;
 		let timeToGrow = 999;
 		let totalTime = timeToHack + timeToWeaken + timeToGrow;
-		ns.tprintf("[%02d] %-20s: $%-15d %d(%d , %d, %d)\n", i, host, maxMoney, totalTime, timeToHack, timeToWeaken, timeToGrow);
+		ns.tprintf("[%02d] %-20s: $%-15d %d(%d , %d, %d)\n", i+1, host, maxMoney, totalTime, timeToHack, timeToWeaken, timeToGrow);
 	}
 
 	// show upgrade money

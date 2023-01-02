@@ -46,7 +46,7 @@ export async function main(ns) {
     let nodes = bfs("home");
 
     let calcNeedThreadsForWeaken = function (host) {
-        return Math.floor(
+        return Math.ceil(
             (ns.getServerSecurityLevel(host) -
                 ns.getServerMinSecurityLevel(host)) /
                 0.05
@@ -59,7 +59,7 @@ export async function main(ns) {
             continue;
         }
         let needThreads = calcNeedThreadsForWeaken(target);
-        if (needThreads < 3) {
+        if (needThreads < 1) {
             continue;
         }
         ns.exec("weakenMost.js", "home", 1, target);

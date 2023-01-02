@@ -46,8 +46,16 @@ export async function main(ns) {
     let nodes = bfs("home");
 
     let isNeedGrow = function (host) {
+        return ns.getServerMoneyAvailable(host) < ns.getServerMaxMoney(host);
+        // return (
+        //     ns.getServerMoneyAvailable(host) / ns.getServerMaxMoney(host) < 0.98
+        // );
+    };
+
+    let isNeedGrowAndWeaken = function (host) {
         return (
-            ns.getServerMoneyAvailable(host) / ns.getServerMaxMoney(host) < 0.98
+            ns.getServerMoneyAvailable(host) < ns.getServerMaxMoney(host) ||
+            ns.getServerSecurityLevel(host) > ns.getServerMinSecurityLevel(host)
         );
     };
 
@@ -56,7 +64,7 @@ export async function main(ns) {
         if (!ns.hasRootAccess(target)) {
             continue;
         }
-        if (!isNeedGrow(target)) {
+        if (!isNeedGrowAndWeaken(target)) {
             continue;
         }
         ns.exec("growMost.js", "home", 1, target);

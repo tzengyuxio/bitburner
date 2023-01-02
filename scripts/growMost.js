@@ -1,7 +1,7 @@
 /** @param {NS} ns */
 export async function main(ns) {
     let target = ns.args[0];
-    let memDoScript = 1.7; // 1.7G
+    let memDoScript = 1.75; // 1.70G(hack), 1.75G(weaken, grow)
     let memHomeReserved = 32; // 32G
     let player = ns.getPlayer();
     let cpuCores = 1;
@@ -54,7 +54,7 @@ export async function main(ns) {
     let allHosts = nodes.concat(pservs);
 
     let calcNeedThreadsForWeaken = function (host) {
-        return Math.floor(
+        return Math.ceil(
             (ns.getServerSecurityLevel(host) -
                 ns.getServerMinSecurityLevel(host)) /
                 0.05
@@ -68,28 +68,29 @@ export async function main(ns) {
         if (currentMoney == 0) {
             currentMoney = 25;
         }
-        let moneyThreshold = maxMoney * 0.98;
+        let moneyThreshold = maxMoney; // * 0.98;
         let ratio = moneyThreshold / currentMoney;
         if (ratio <= 1) {
             return 0;
         }
-        let numThreads = Math.floor(ns.growthAnalyze(host, ratio, cpuCores));
+        let numThreads = Math.ceil(ns.growthAnalyze(host, ratio, cpuCores));
         return numThreads;
     };
 
     let freeRam = function (host) {
-        if (host == "home") {
+        if (host != "home") {
             return ns.getServerMaxRam(host) - ns.getServerUsedRam(host);
         }
-        return Math.max(
-            ns.getServerMaxRam(host) -
-                ns.getServerUsedRam(host) -
-                memHomeReserved,
-            0
-        );
+        return 0;
+        // return Math.max(
+        //     ns.getServerMaxRam(host) -
+        //         ns.getServerUsedRam(host) -
+        //         memHomeReserved,
+        //     0
+        // );
     };
 
-    let findCopyAndLaunch = function (allHosts, needThreads, script, target) {
+    let findCopyAndLaunch = function (allHosts, needThreads, script, target, action) {
         let leftThreads = needThreads;
         for (let i = 0; i < allHosts.length && leftThreads > 0; ++i) {
             let host = allHosts[i];
@@ -106,10 +107,11 @@ export async function main(ns) {
             ns.scp(script, host);
 
             // launch the weaken script(s)
-            let pid = ns.exec(script, host, numThreads, target);
+            let tag = ns.sprintf("%s_%s_%s_%d", action, host, target, i);
+            let pid = ns.exec(script, host, numThreads, target, tag);
             if (pid == 0) {
                 ns.tprintf(
-                    "    [ERROR] exec '%s' at host[%s] in %d threads to weaken %s\n",
+                    "    [ERROR] exec '%s' at host[%s] in %d threads to grow %s\n",
                     script,
                     host,
                     numThreads,
@@ -130,49 +132,68 @@ export async function main(ns) {
     };
 
     // determine how many threads we need to lower security to the minimum
+    ns.tprintf("\n");
     ns.tprintf("Target host: %s", target);
     ns.tprintf(
         "Current money available: %d\n",
         ns.getServerMoneyAvailable(target)
     );
     ns.tprintf("Max money: %d\n", ns.getServerMaxMoney(target));
-    let needThreads = calcNeedThreadsForGrow(target);
-    let securityIncreased = ns.growthAnalyzeSecurity(
-        needThreads,
-        target,
-        cpuCores
-    );
-    let needThreadsForWeaken = Math.ceil(securityIncreased / 0.05);
-    ns.tprintf(
-        "Need threads: %d(grow), %d(weaken)\n",
-        needThreads,
-        needThreadsForWeaken
-    );
-    let leftThreads = findCopyAndLaunch(
-        allHosts,
-        needThreads,
-        "doGrow.js",
-        target
-    );
-    let leftThreadsWeaken = findCopyAndLaunch(
-        allHosts,
-        needThreadsForWeaken,
-        "doWeaken.js",
-        target
-    );
-    ns.tprintf(
-        "Left threads: %d(grow), %d(weaken)\n",
-        leftThreads,
-        leftThreadsWeaken
-    );
-    // sleep until weaken is finished
-    let server = ns.getServer(target);
-    let growTime = ns.formulas.hacking.growTime(server, player);
-    let weakenTime = ns.formulas.hacking.weakenTime(server, player);
 
+    let needWeakenThreadsBefore = calcNeedThreadsForWeaken(target);
+    let needGrowThreads = calcNeedThreadsForGrow(target);
+    let securityIncreased = needGrowThreads * 0.004;
+    let needWeakenThreadsAfter = Math.ceil(securityIncreased / 0.05);
     ns.tprintf(
-        "Time cost: %s(grow), %s(weaken)\n",
-        ms2str(growTime),
-        ms2str(weakenTime)
+        "Need threads: %d(weaken) -> %d(grow) -> %d(weaken)\n",
+        needWeakenThreadsBefore,
+        needGrowThreads,
+        needWeakenThreadsAfter
+    );
+    let betweenRange = 250; // ms
+    let weakenTime = ns.getWeakenTime(target);
+    let growTime = ns.getGrowTime(target);
+    let sleepTime1 = betweenRange * 2;
+    let sleepTime2 = weakenTime - betweenRange - growTime;
+    let sleepTime3 = growTime + betweenRange;
+    ns.tprintf("----------------------------------------");
+    ns.tprintf(
+        "| %s | %s | %s |\n",
+        ms2str(sleepTime1),
+        ms2str(sleepTime2),
+        ms2str(sleepTime3)
+    );
+    ns.tprintf("Total time: %s\n", ms2str(weakenTime + betweenRange * 2));
+
+    let leftWeakenThreadsBefore = findCopyAndLaunch(
+        allHosts,
+        needWeakenThreadsBefore,
+        "doWeaken.js",
+        target,
+        'WB'
+    );
+    await ns.sleep(sleepTime1);
+    let leftGrowThreads = findCopyAndLaunch(
+        allHosts,
+        needGrowThreads,
+        "doGrow.js",
+        target,
+        'G'
+    );
+    await ns.sleep(sleepTime2);
+    let leftWeakenThreadsAfter = findCopyAndLaunch(
+        allHosts,
+        needWeakenThreadsAfter,
+        "doWeaken.js",
+        target,
+        'WA'
+    );
+    await ns.sleep(sleepTime3);
+    ns.tprintf(
+        "Left threads: %d(weaken), %d(grow), %d(weaken) on target host[%s]\n",
+        leftWeakenThreadsBefore,
+        leftGrowThreads,
+        leftWeakenThreadsAfter,
+        target
     );
 }
