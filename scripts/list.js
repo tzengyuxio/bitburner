@@ -185,4 +185,5 @@ export async function main(ns) {
 
 	ns.tprint(ns.fileExists('BruteSSH.exe'));
 	ns.tprint(ns.fileExists('../BruteSSH.exe'));
+	ns.tprintf('Karma: %f\n', ns.heart.break());
 }
